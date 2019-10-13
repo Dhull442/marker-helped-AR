@@ -13,7 +13,7 @@ objp[:,:2] = np.mgrid[0:7,0:6].T.reshape(-1,2)
 objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
 
-images = glob.glob('samples/*.jpg')
+images = glob.glob('calib/*.jpg')
 
 for fname in images:
     img = cv2.imread(fname)
@@ -36,7 +36,7 @@ for fname in images:
 
 cv2.destroyAllWindows()
 
-img = cv2.imread('samples/left12.jpg')
+img = cv2.imread('calib/flat.jpg')
 gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
 #print(ret)				# intrinsics errors

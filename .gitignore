@@ -1,1 +1,4 @@
 objects/*
+calibresult.png
+*/*/__pycache__
+*.pyc

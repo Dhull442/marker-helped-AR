@@ -17,36 +17,36 @@ from objloader_simple import *
 
 # Minimum number of matches that have to be found
 # to consider the recognition valid
-MIN_MATCHES = 10  
+MIN_MATCHES = 10
 
 
 def main():
     """
     This functions loads the target surface image,
     """
-    homography = None 
-    # matrix of camera parameters (made up but works quite well for me) 
-    camera_parameters = np.array([[800, 0, 320], [0, 800, 240], [0, 0, 1]])
+    homography = None
+    # matrix of camera parameters (made up but works quite well for me)
+    camera_parameters = np.array([[435.90240479, 0., 276.97807681], [  0.,   532.43017578, 253.91024449], [0, 0, 1]])
     # create ORB keypoint detector
     orb = cv2.ORB_create()
-    # create BFMatcher object based on hamming distance  
+    # create BFMatcher object based on hamming distance
     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     # load the reference surface that will be searched in the video stream
     dir_name = os.getcwd()
-    model = cv2.imread(os.path.join(dir_name, 'reference/model.jpg'), 0)
+    model = cv2.imread(os.path.join(dir_name, 'reference/m1.jpg'), 0)
     # Compute model keypoints and its descriptors
     kp_model, des_model = orb.detectAndCompute(model, None)
     # Load 3D model from OBJ file
-    obj = OBJ(os.path.join(dir_name, 'models/fox.obj'), swapyz=True)  
+    obj = OBJ(os.path.join(dir_name, 'models/fox.obj'), swapyz=True)
     # init video capture
     cap = cv2.VideoCapture(0)
-
+    # h = np.eye(3)
     while True:
         # read the current frame
         ret, frame = cap.read()
         if not ret:
-            print "Unable to capture video"
-            return 
+            print("Unable to capture video")
+            return
         # find and draw the keypoints of the frame
         kp_frame, des_frame = orb.detectAndCompute(frame, None)
         # match frame descriptors with model descriptors
@@ -54,9 +54,15 @@ def main():
         # sort them in the order of their distance
         # the lower the distance, the better the match
         matches = sorted(matches, key=lambda x: x.distance)
-
+        dist = []
+        for m in matches:
+            dist.append(m.distance)
+        dist = np.asarray(dist)
+        # if(median(dist)<90):
         # compute Homography if enough matches are found
-        if len(matches) > MIN_MATCHES:
+        good = np.median(dist)<50
+        if True:
+            # print(np.median(dist))
             # differenciate between source points and destination points
             src_pts = np.float32([kp_model[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
             dst_pts = np.float32([kp_frame[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
@@ -68,28 +74,29 @@ def main():
                 pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
                 # project corners into frame
                 dst = cv2.perspectiveTransform(pts, homography)
-                # connect them with lines  
-                frame = cv2.polylines(frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)  
+                # connect them with lines
+                frame = cv2.polylines(frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
             # if a valid homography matrix was found render cube on model plane
-            if homography is not None:
+            if homography is not None and good:
                 try:
                     # obtain 3D projection matrix from homography matrix and camera parameters
-                    projection = projection_matrix(camera_parameters, homography)  
+                    projection = projection_matrix(camera_parameters, homography)
                     # project cube or model
                     frame = render(frame, obj, projection, model, False)
                     #frame = render(frame, model, projection)
                 except:
                     pass
             # draw first 10 matches.
-            if args.matches:
+            if args.matches and good:
                 frame = cv2.drawMatches(model, kp_model, frame, kp_frame, matches[:10], 0, flags=2)
             # show result
             cv2.imshow('frame', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
-        else:
-            print "Not enough matches found - %d/%d" % (len(matches), MIN_MATCHES)
+        # else:
+        #     # cv2.imshow('frame',frame)
+        #     print( "Not enough matches found - %d/%d" % (len(matches), MIN_MATCHES))
 
     cap.release()
     cv2.destroyAllWindows()
