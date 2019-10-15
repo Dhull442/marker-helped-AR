@@ -33,7 +33,7 @@ def main():
     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     # load the reference surface that will be searched in the video stream
     dir_name = os.getcwd()
-    model = cv2.imread(os.path.join(dir_name, 'reference/m1.jpg'), 0)
+    model = cv2.imread(os.path.join(dir_name, 'reference/new_marker0.jpg'), 0)
     # Compute model keypoints and its descriptors
     kp_model, des_model = orb.detectAndCompute(model, None)
     # Load 3D model from OBJ file
@@ -68,6 +68,7 @@ def main():
             dst_pts = np.float32([kp_frame[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
             # compute Homography
             homography, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+            # print()
             if args.rectangle:
                 # Draw a rectangle that marks the found model in the frame
                 h, w = model.shape
@@ -120,7 +121,7 @@ def render(img, obj, projection, model, color=False):
         dst = cv2.perspectiveTransform(points.reshape(-1, 1, 3), projection)
         imgpts = np.int32(dst)
         if color is False:
-            cv2.fillConvexPoly(img, imgpts, (137, 27, 211))
+            cv2.fillConvexPoly(img, imgpts, (100,100,0))
         else:
             color = hex_to_rgb(face[-1])
             color = color[::-1]  # reverse

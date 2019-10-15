@@ -7,7 +7,7 @@ while ret:
     ret, frame = cap.read()
     cv2.imshow('fr',frame)
     if cv2.waitKey(1) & 0xFF == ord('s'):
-        cv2.imwrite('calib/board'+str(i)+'.jpg',frame)
+        cv2.imwrite('new_marker'+str(i)+'.jpg',frame)
         i = i+1
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
