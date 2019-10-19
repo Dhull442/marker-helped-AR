@@ -33,14 +33,16 @@ def main():
     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     # load the reference surface that will be searched in the video stream
     dir_name = os.getcwd()
-    model = cv2.imread(os.path.join(dir_name, 'reference/new_marker0.jpg'), 0)
+    model = cv2.imread(os.path.join(dir_name, 'reference/marker_shourya0.jpg'), 0)
+    other_model = cv2.imread(os.path.join(dir_name, 'reference/circular_marker_shourya1.jpg'), 0)
     # Compute model keypoints and its descriptors
     kp_model, des_model = orb.detectAndCompute(model, None)
+    kp_other_model, des_other_model = orb.detectAndCompute(other_model, None)
     # Load 3D model from OBJ file
     obj = OBJ(os.path.join(dir_name, 'models/fox.obj'), swapyz=True)
     # init video capture
     # cap = cv2.VideoCapture(0)
-    frame = cv2.imread('p1.jpg')
+    frame = cv2.imread('test.jpg')
     # h = np.eye(3)
     if True:
     #     # read the current frame
@@ -52,16 +54,22 @@ def main():
         kp_frame, des_frame = orb.detectAndCompute(frame, None)
         # match frame descriptors with model descriptors
         matches = bf.match(des_model, des_frame)
+        other_matches = bf.match(des_other_model, des_frame)
         # sort them in the order of their distance
         # the lower the distance, the better the match
         matches = sorted(matches, key=lambda x: x.distance)
+        other_matches = sorted(other_matches, key=lambda x: x.distance)
         dist = []
         for m in matches:
             dist.append(m.distance)
         dist = np.asarray(dist)
-        # if(median(dist)<90):
-        # compute Homography if enough matches are found
         good = np.median(dist)<40
+
+        dist = []
+        for m in matches:
+            dist.append(m.distance)
+        dist = np.asarray(dist)
+        good = good and (np.median(dist)<40)
         if True:
             # print(np.median(dist))
             # differenciate between source points and destination points
@@ -70,7 +78,20 @@ def main():
             # compute Homography
             homography, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
 
-                # Draw a rectangle that marks the found model in the frame
+            src_pts = np.float32([kp_other_model[m.queryIdx].pt for m in other_matches]).reshape(-1, 1, 2)
+            dst_pts = np.float32([kp_frame[m.trainIdx].pt for m in other_matches]).reshape(-1, 1, 2)
+            # compute Homography
+            other_homography, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+
+            # Draw a rectangle that marks the found other model in the frame
+            h, w = other_model.shape
+            pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
+            # project corners into frame
+            dst = cv2.perspectiveTransform(pts, other_homography)
+            # connect them with lines
+            frame = cv2.polylines(frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
+
+            # centroid of primary model
             h, w = model.shape
             pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
             centroid = np.asarray([(w-1)/2.0, (h-1)/2.0, 0.])
@@ -104,7 +125,7 @@ def main():
                     #frame = render(frame, model, projection)
                 except:
                     pass
-            # cv2.imwrite('ans.jpg',frame)
+            cv2.imwrite('ans.jpg',frame)
             # draw first 10 matches.
             if args.matches and good:
                 frame = cv2.drawMatches(model, kp_model, frame, kp_frame, matches[:10], 0, flags=2)

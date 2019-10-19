@@ -26,14 +26,16 @@ def main():
     """
     homography = None
     # matrix of camera parameters (made up but works quite well for me)
-    camera_parameters = np.array([[435.90240479, 0., 276.97807681], [  0.,   532.43017578, 253.91024449], [0, 0, 1]])
+    # camera_parameters = np.array([[435.90240479, 0., 276.97807681], [  0.,   532.43017578, 253.91024449], [0, 0, 1]])
+    camera_parameters = np.array([[545.72564697, 0., 455.34108576], [0., 465.43661499, 236.53782366], [ 0., 0., 1. ]])
     # create ORB keypoint detector
     orb = cv2.ORB_create()
     # create BFMatcher object based on hamming distance
     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    final_homography = None
     # load the reference surface that will be searched in the video stream
     dir_name = os.getcwd()
-    model = cv2.imread(os.path.join(dir_name, 'reference/new_marker0.jpg'), 0)
+    model = cv2.imread(os.path.join(dir_name, 'reference/circular_marker_shourya1.jpg'), 0)
     # Compute model keypoints and its descriptors
     kp_model, des_model = orb.detectAndCompute(model, None)
     # Load 3D model from OBJ file
@@ -80,8 +82,12 @@ def main():
             # if a valid homography matrix was found render cube on model plane
             if homography is not None and good:
                 try:
+                    if final_homography is None:
+                        final_homography = homography
+                    else:
+                        final_homography = final_homography*0.9 + homography*0.1
                     # obtain 3D projection matrix from homography matrix and camera parameters
-                    projection = projection_matrix(camera_parameters, homography)
+                    projection = projection_matrix(camera_parameters, final_homography)
                     # project cube or model
                     frame = render(frame, obj, projection, model, False)
                     #frame = render(frame, model, projection)
