@@ -35,7 +35,7 @@ def main():
     final_homography = None
     # load the reference surface that will be searched in the video stream
     dir_name = os.getcwd()
-    model = cv2.imread(os.path.join(dir_name, 'reference/circular_marker_shourya1.jpg'), 0)
+    model = cv2.imread(os.path.join(dir_name, 'reference/marker_shourya0.jpg'), 0)
     # Compute model keypoints and its descriptors
     kp_model, des_model = orb.detectAndCompute(model, None)
     # Load 3D model from OBJ file
