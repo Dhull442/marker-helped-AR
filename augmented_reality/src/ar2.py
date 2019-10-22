@@ -34,8 +34,8 @@ def main():
     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     # load the reference surface that will be searched in the video stream
     dir_name = os.getcwd()
-    model = cv2.imread(os.path.join(dir_name, 'reference/marker_shourya0.jpg'), 0)
-    other_model = cv2.imread(os.path.join(dir_name, 'reference/circular_marker_shourya1.jpg'), 0)
+    model = cv2.imread(os.path.join(dir_name, 'reference/marker_websak_0.jpg'), 0)
+    other_model = cv2.imread(os.path.join(dir_name, 'reference/marker_websak_6.jpg'), 0)
     # Compute model keypoints and its descriptors
     kp_model, des_model = orb.detectAndCompute(model, None)
     kp_other_model, des_other_model = orb.detectAndCompute(other_model, None)
@@ -43,7 +43,7 @@ def main():
     obj = OBJ(os.path.join(dir_name, 'models/fox.obj'), swapyz=True)
     # init video capture
     # cap = cv2.VideoCapture(0)
-    frame = cv2.imread('test.jpg')
+    frame = cv2.imread('pic0.jpg')
     # h = np.eye(3)
     if True:
     #     # read the current frame
@@ -64,13 +64,14 @@ def main():
         for m in matches:
             dist.append(m.distance)
         dist = np.asarray(dist)
-        good = np.median(dist)<40
-
+        good = np.median(dist)<60
+        print(np.median(dist))
         dist = []
         for m in matches:
             dist.append(m.distance)
         dist = np.asarray(dist)
-        good = good and (np.median(dist)<40)
+        print(np.median(dist))
+        good = good and (np.median(dist)<60)
         # print(np.median(dist))
         # differenciate between source points and destination points
         src_pts = np.float32([kp_model[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
@@ -105,6 +106,7 @@ def main():
         # if args.rectangle:
         #     frame = cv2.polylines(frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
         # if a valid homography matrix was found render cube on model plane
+        # print()
         if homography is not None and good:
             # try:
             # print(homography)
@@ -126,6 +128,7 @@ def main():
         #     break
 
     # cap.release()
+    print("DONE")
     cv2.destroyAllWindows()
     return 0
 
