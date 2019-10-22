@@ -25,9 +25,9 @@ def sqrt(x):
 class Ball:
     def __init__(self):
         self.r = 10
-        self.x = 0
-        self.y = 0
-        self.speed = 1
+        self.x = 10
+        self.y = 10
+        self.speed = 2
         self.angle = [1/sqrt(2),1/sqrt(2)]
         self.refjust = False
         self.times = 0
@@ -40,6 +40,14 @@ class Ball:
         val = abs(((y2-y1)*self.x) - ((x2-x1)*self.y) + (x2*y1-x1*y2) )/sqrt((y2-y1)**2 + (x2-x1)**2)
         print(val)
         return val
+    def check(self,line):
+        #check if the point is on segment
+        x = (line[0][0]+line[1][0])/2
+        y = (line[0][1]+line[1][1])/2
+        d = sqrt((line[0][1]-line[1][1])**2 + (line[0][0]-line[1][0])**2) / 2
+        dp = sqrt((self.y - y)**2 + (self.x - x)**2)
+        return dp <= d
+
     def changepos(self,line0,line1):
         dst = []
         print(self.refjust,self.times)
@@ -49,11 +57,11 @@ class Ball:
         if(self.refjust):
             self.times += 1
         else:
-            if(self.dist(line0)<self.r):
+            if(self.dist(line0)<self.r and self.check(line0)):
                 # print("ref")
                 self.refjust = True
                 dst = line0
-            elif(self.dist(line1)<self.r):
+            elif(self.dist(line1)<self.r and self.check(line1)):
                 self.refjust = True
                 dst = line1
             if(len(dst)>0 and self.refjust):
@@ -91,7 +99,7 @@ def main():
     # load the reference surface that will be searched in the video stream
     dir_name = os.getcwd()
     model = cv2.imread(os.path.join(dir_name, 'reference/marker_websak_0.jpg'), 0)
-    other_model = cv2.imread(os.path.join(dir_name, 'reference/marker_websak_3.jpg'), 0)
+    other_model = cv2.imread(os.path.join(dir_name, 'reference/marker_websak_1.jpg'), 0)
     # Compute model keypoints and its descriptors
     kp_model, des_model = orb.detectAndCompute(model, None)
     kp_other_model, des_other_model = orb.detectAndCompute(other_model, None)
@@ -100,6 +108,10 @@ def main():
     # init video capture
     cap = cv2.VideoCapture(0)
     ball = Ball();
+
+    frame_height = int(cap.get(4))
+    frame_width = int(cap.get(3))
+    out = cv2.VideoWriter('ping_pong.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 25, (frame_width,frame_height))
     while True:
         # read the current frame
         ret, frame = cap.read()
@@ -119,7 +131,7 @@ def main():
         for m in matches:
             dist.append(m.distance)
         dist = np.asarray(dist)
-        good = np.median(dist)<60
+        good = np.median(dist)<50
         # good = True
         # print("frist",np.median(dist))
         dist = []
@@ -127,7 +139,7 @@ def main():
             dist.append(m.distance)
         dist = np.asarray(dist)
         # print("second",np.median(dist))
-        good = good and (np.median(dist)<60)
+        good = good and (np.median(dist)<50)
         # print(np.median(dist))
         # good = True
         # differenciate between source points and destination points
@@ -163,17 +175,21 @@ def main():
         ball.changepos(line_0,line_1)
         x = int(ball.x)
         y = int(ball.y)
-        if( x < frame.shape[0] and y < frame.shape[1] ):
+        if( y < frame.shape[0] and x < frame.shape[1] and x >= 0 and y >= 0 ):
             frame = cv2.circle(frame, (x,y), 10, (25,179,255), -1)
+        else:
+            break
         # draw first 10 matches.
         if args.matches and good:
             frame = cv2.drawMatches(model, kp_model, frame, kp_frame, matches[:10], 0, flags=2)
         # show result
-        cv2.imshow('frame', frame)
+        cv2.imshow('frame', cv2.flip(frame,1))
+        out.write(frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
     cap.release()
+    out.release()
     cv2.destroyAllWindows()
     return 0
 
