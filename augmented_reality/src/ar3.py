@@ -14,13 +14,78 @@ import numpy as np
 import math
 import os
 import copy
+import math
 from objloader_simple import *
 
 # Minimum number of matches that have to be found
 # to consider the recognition valid
 MIN_MATCHES = 10
+def sqrt(x):
+    return x**(0.5)
+class Ball:
+    def __init__(self):
+        self.r = 10
+        self.x = 10
+        self.y = 10
+        self.speed = 2
+        self.angle = [1/sqrt(2),1/sqrt(2)]
+        self.refjust = False
+        self.times = 0
+    def dist(self,line):
+        x1 = line[0][0]
+        y1 = line[0][1]
+        x2 = line[1][0]
+        y2 = line[1][1]
+        print(x1,y1,x2,y2)
+        val = abs(((y2-y1)*self.x) - ((x2-x1)*self.y) + (x2*y1-x1*y2) )/sqrt((y2-y1)**2 + (x2-x1)**2)
+        print(val)
+        return val
+    def check(self,line):
+        #check if the point is on segment
+        x = (line[0][0]+line[1][0])/2
+        y = (line[0][1]+line[1][1])/2
+        d = sqrt((line[0][1]-line[1][1])**2 + (line[0][0]-line[1][0])**2) / 2
+        dp = sqrt((self.y - y)**2 + (self.x - x)**2)
+        return dp <= d
 
-
+    def changepos(self,line0,line1):
+        dst = []
+        print(self.refjust,self.times)
+        if(self.times > 50):
+            self.refjust = False
+            self.times = 0
+        if(self.refjust):
+            self.times += 1
+        else:
+            if(self.dist(line0)<self.r and self.check(line0)):
+                # print("ref")
+                self.refjust = True
+                dst = line0
+            elif(self.dist(line1)<self.r and self.check(line1)):
+                self.refjust = True
+                dst = line1
+            if(len(dst)>0 and self.refjust):
+                self.speed+=0.5
+                sl1 = (dst[0][1] - dst[1][1])/(dst[0][0] - dst[1][0])
+                sl2 = self.angle[1]/self.angle[0]
+                # m1 = [(dst[0][0] - dst[1][0]),(dst[0][1] - dst[1][1])]
+                sl3 = (2*sl1 + sl2*(sl1**2) - sl2)/(2*sl1*sl2-sl1**2 + 1)
+                angle = [math.cos(math.atan(sl3)),math.sin(math.atan(sl3))]
+                mc = [sl1,0.]
+                mc[1] = dst[0][1] - mc[0]*dst[0][0]
+                nx = self.x + 50*angle[0]
+                ny = self.y + 50*angle[1]
+                if((self.x*mc[0]-self.y+mc[1])*(nx*mc[0]-ny+mc[1]) > 0):
+                    self.angle[0] = angle[0]
+                    self.angle[1] = angle[1]
+                else:
+                    self.angle[0] = -1*angle[0]
+                    self.angle[1] = -1*angle[1]
+                print(self.angle)
+        self.update();
+    def update(self):
+        self.x = self.x + self.angle[0] * self.speed
+        self.y = self.y + self.angle[1] * self.speed
 def main():
     """
     This functions loads the target surface image,
@@ -34,8 +99,8 @@ def main():
     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     # load the reference surface that will be searched in the video stream
     dir_name = os.getcwd()
-    model = cv2.imread(os.path.join(dir_name, 'reference/marker_shourya0.jpg'), 0)
-    other_model = cv2.imread(os.path.join(dir_name, 'reference/circular_marker_shourya1.jpg'), 0)
+    model = cv2.imread(os.path.join(dir_name, 'reference/marker_websak_0.jpg'), 0)
+    other_model = cv2.imread(os.path.join(dir_name, 'reference/marker_websak_1.jpg'), 0)
     # Compute model keypoints and its descriptors
     kp_model, des_model = orb.detectAndCompute(model, None)
     kp_other_model, des_other_model = orb.detectAndCompute(other_model, None)
@@ -43,8 +108,11 @@ def main():
     obj = OBJ(os.path.join(dir_name, 'models/fox.obj'), swapyz=True)
     # init video capture
     cap = cv2.VideoCapture(0)
-    #frame = cv2.imread('test.jpg')
-    # h = np.eye(3)
+    ball = Ball();
+
+    frame_height = int(cap.get(4))
+    frame_width = int(cap.get(3))
+    out = cv2.VideoWriter('ping_pong.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 25, (frame_width,frame_height))
     while True:
         # read the current frame
         ret, frame = cap.read()
@@ -64,14 +132,17 @@ def main():
         for m in matches:
             dist.append(m.distance)
         dist = np.asarray(dist)
-        good = np.median(dist)<40
-
+        good = np.median(dist)<50
+        # good = True
+        # print("frist",np.median(dist))
         dist = []
         for m in matches:
             dist.append(m.distance)
         dist = np.asarray(dist)
-        good = good and (np.median(dist)<40)
+        # print("second",np.median(dist))
+        good = good and (np.median(dist)<50)
         # print(np.median(dist))
+        # good = True
         # differenciate between source points and destination points
         src_pts = np.float32([kp_model[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
         dst_pts = np.float32([kp_frame[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
@@ -82,33 +153,44 @@ def main():
         dst_pts = np.float32([kp_frame[m.trainIdx].pt for m in other_matches]).reshape(-1, 1, 2)
         # compute Homography
         other_homography, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-
+        line_0 = [[0,5000],[5000,0]]
+        line_1 = [[0,3000],[3000,0]]
         if homography is not None and other_homography is not None and good:
         # Draw a rectangle and get centroid that marks the found models in the frame
-	        h, w = model.shape
-	        pts = np.float32([[(w-1)/2, 0], [(w-1)/2, h - 1]]).reshape(-1, 1, 2)
-	        dst = cv2.perspectiveTransform(pts, homography)							## first marker 2 points to define a ling
-	        frame = cv2.polylines(frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
-	        h, w = other_model.shape
-	        pts = np.float32([[(w-1)/2, 0], [(w-1)/2, h - 1]]).reshape(-1, 1, 2)
-	        dst = cv2.perspectiveTransform(pts, other_homography)					## second marker 2 points to define a ling
-	        frame = cv2.polylines(frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
-	    ########### ADD CODE FOR DISPLAYING BALL AND LOGIC OF GAME
-        #     # obtain 3D projection matrix from homography matrix and camera parameters
-        #     projection = projection_matrix(camera_parameters, homography)
-        #     other_projection = projection_matrix(camera_parameters, other_homography)
-        #     # project cube or model
-        #     render(frame, obj,projection, other_projection, model, other_model, False)
-
+            h, w = model.shape
+            pts = np.float32([[100,0],[0,100]]).reshape(-1, 1, 2)
+            dst = cv2.perspectiveTransform(pts, homography)							## first marker 2 points to define a ling
+            line_0[0][0] = dst[0][0][0]
+            line_0[0][1] = dst[0][0][1]
+            line_0[1][0] = dst[1][0][0]
+            line_0[1][1] = dst[1][0][1]
+            frame = cv2.polylines(frame, [np.int32(dst)], True, 200, 3, cv2.LINE_AA)
+            h, w = other_model.shape
+            pts = np.float32([[200,0],[0,200]]).reshape(-1, 1, 2)
+            dst = cv2.perspectiveTransform(pts, other_homography)					## second marker 2 points to define a ling
+            line_1[0][0] = dst[0][0][0]
+            line_1[0][1] = dst[0][0][1]
+            line_1[1][0] = dst[1][0][0]
+            line_1[1][1] = dst[1][0][1]
+            frame = cv2.polylines(frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
+        ball.changepos(line_0,line_1)
+        x = int(ball.x)
+        y = int(ball.y)
+        if( y < frame.shape[0] and x < frame.shape[1] and x >= 0 and y >= 0 ):
+            frame = cv2.circle(frame, (x,y), 10, (25,179,255), -1)
+        else:
+            break
         # draw first 10 matches.
         if args.matches and good:
             frame = cv2.drawMatches(model, kp_model, frame, kp_frame, matches[:10], 0, flags=2)
         # show result
-        cv2.imshow('frame', frame)
+        cv2.imshow('frame', cv2.flip(frame,1))
+        out.write(frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
     cap.release()
+    out.release()
     cv2.destroyAllWindows()
     return 0
 
@@ -161,10 +243,10 @@ def render(img, obj, projection, other_projection, model, other_model, counter, 
 
     vec_base = centroid2 - centroid1
     vec_base = vec_base / (vec_base**2).sum()**0.5
-    
+
     counter = 0;
-    origframe = copy.deepcopy(img) 
-    prev_dist = 9999999             
+    origframe = copy.deepcopy(img)
+    prev_dist = 9999999
     while True:
         #print(counter)
         img = copy.deepcopy(origframe)
