@@ -1,12 +1,3 @@
-
-# Useful links
-# http://www.pygame.org/wiki/OBJFileLoader
-# https://rdmilligan.wordpress.com/2015/10/15/augmented-reality-using-opencv-opengl-and-blender/
-# https://clara.io/library
-
-# TODO -> Implement command line arguments (scale, model and object to be projected)
-#      -> Refactor and organize code (proper funcition definition and separation, classes, error handling...)
-
 import argparse
 
 import cv2

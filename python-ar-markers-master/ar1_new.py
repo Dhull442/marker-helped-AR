@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import cv2
 import numpy as np
 import math
@@ -62,7 +60,7 @@ def projection_matrix(camera_parameters, homography):
     rot_3 = np.cross(rot_1, rot_2)
     # finally, compute the 3D projection matrix from the model to the current frame
     projection = np.stack((rot_1, rot_2, rot_3, translation)).T
-    print(projection)
+    # print(projection)
     return np.dot(camera_parameters, projection)
 
 
@@ -107,30 +105,34 @@ if __name__ == '__main__':
             h, w = model.shape
             src_pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
             tmp_pts = np.float32(marker.contours)
+            done = []
             for i in range(len(dst_pts)):
                 min_idx = 0
                 min_val = np.inf
                 for j in range(len(tmp_pts)):
-                    dist = ((tmp_pts[j][0][0]-dst_pts[i][0][0])**2 + (tmp_pts[j][0][1]-dst_pts[i][0][1])**2 )**(1/2)
-                    if dist < min_val:
-                        min_idx = j
-                        min_val = dist
+                    if j not in done:
+                        dist = ((tmp_pts[j][0][0]-dst_pts[i][0][0])**2 + (tmp_pts[j][0][1]-dst_pts[i][0][1])**2 )**(1/2)
+                        if dist < min_val:
+                            min_idx = j
+                            min_val = dist
+                done.append(min_idx)
                 dst_pts[i][0] = tmp_pts[min_idx][0]
             homography, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
             if homography is not None:
-                # try:
-                if final_homography is None:
-                    final_homography = homography
-                else:
-                    final_homography = final_homography*0.9 + homography*0.1
-                # obtain 3D projection matrix from homography matrix and camera parameters
-                projection = projection_matrix(camera_parameters, final_homography)
-                # project cube or model
-                frame = render(frame, obj, projection, model, False)
-                #frame = render(frame, model, projection)
-                # except:
-                #     final_homography = None
-                #     pass
+                try:
+                # final_homography = homography
+                    if final_homography is None:
+                        final_homography = homography
+                    else:
+                        final_homography = final_homography*0.9 + homography*0.1
+                    # obtain 3D projection matrix from homography matrix and camera parameters
+                    projection = projection_matrix(camera_parameters, final_homography)
+                    # project cube or model
+                    frame = render(frame, obj, projection, model, False)
+                except:
+                    final_homography = None
+                    dst_pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
+                    # pass
         cv2.imshow('Video Output', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

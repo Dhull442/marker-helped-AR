@@ -1,12 +1,3 @@
-
-# Useful links
-# http://www.pygame.org/wiki/OBJFileLoader
-# https://rdmilligan.wordpress.com/2015/10/15/augmented-reality-using-opencv-opengl-and-blender/
-# https://clara.io/library
-
-# TODO -> Implement command line arguments (scale, model and object to be projected)
-#      -> Refactor and organize code (proper funcition definition and separation, classes, error handling...)
-
 import argparse
 
 import cv2
@@ -14,12 +5,9 @@ import numpy as np
 import math
 import os
 import copy
-import math
 from objloader_simple import *
 
-# Minimum number of matches that have to be found
-# to consider the recognition valid
-MIN_MATCHES = 10
+
 def sqrt(x):
     return x**(0.5)
 class Ball:
@@ -158,7 +146,7 @@ def main():
         if homography is not None and other_homography is not None and good:
         # Draw a rectangle and get centroid that marks the found models in the frame
             h, w = model.shape
-            pts = np.float32([[100,0],[0,100]]).reshape(-1, 1, 2)
+            pts = np.float32([[(w-1)/2, 0], [(w-1)/2, h]]).reshape(-1, 1, 2)
             dst = cv2.perspectiveTransform(pts, homography)							## first marker 2 points to define a ling
             line_0[0][0] = dst[0][0][0]
             line_0[0][1] = dst[0][0][1]
@@ -166,7 +154,7 @@ def main():
             line_0[1][1] = dst[1][0][1]
             frame = cv2.polylines(frame, [np.int32(dst)], True, 200, 3, cv2.LINE_AA)
             h, w = other_model.shape
-            pts = np.float32([[200,0],[0,200]]).reshape(-1, 1, 2)
+            pts = np.float32([[(w-1)/2, 0], [(w-1)/2, h]]).reshape(-1, 1, 2)
             dst = cv2.perspectiveTransform(pts, other_homography)					## second marker 2 points to define a ling
             line_1[0][0] = dst[0][0][0]
             line_1[0][1] = dst[0][0][1]
