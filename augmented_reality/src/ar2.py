@@ -178,12 +178,15 @@ def render(img, obj, projection, other_projection, model, other_model, counter, 
 
     vec_base = centroid2 - centroid1
     vec_base = vec_base / (vec_base**2).sum()**0.5
-    
+
     counter = 0;
-    origframe = copy.deepcopy(img) 
-    prev_dist = 9999999             
+    origframe = copy.deepcopy(img)
+    prev_dist = 9999999
+    frame_height = img.shape[0]
+    frame_width = img.shape[1]
+    out = cv2.VideoWriter('vid.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 5, (frame_width,frame_height))
     while True:
-        #print(counter)
+        print(counter)
         img = copy.deepcopy(origframe)
         vec = vec_base*counter
         all_points_x = []
@@ -222,6 +225,10 @@ def render(img, obj, projection, other_projection, model, other_model, counter, 
             counter += 1
         prev_dist = dist
         cv2.imwrite('out/ans'+str(counter)+'.jpg',img)
+        out.write(img)
+        print("frame written")
+	out.release()
+    print("Done")
 
 
 def projection_matrix(camera_parameters, homography):
