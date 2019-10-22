@@ -65,6 +65,7 @@ class Ball:
                 self.refjust = True
                 dst = line1
             if(len(dst)>0 and self.refjust):
+                self.speed+=0.5
                 sl1 = (dst[0][1] - dst[1][1])/(dst[0][0] - dst[1][0])
                 sl2 = self.angle[1]/self.angle[0]
                 # m1 = [(dst[0][0] - dst[1][0]),(dst[0][1] - dst[1][1])]
