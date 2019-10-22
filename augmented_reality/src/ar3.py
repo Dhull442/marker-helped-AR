@@ -42,15 +42,15 @@ def main():
     # Load 3D model from OBJ file
     obj = OBJ(os.path.join(dir_name, 'models/fox.obj'), swapyz=True)
     # init video capture
-    # cap = cv2.VideoCapture(0)
-    frame = cv2.imread('test.jpg')
+    cap = cv2.VideoCapture(0)
+    #frame = cv2.imread('test.jpg')
     # h = np.eye(3)
-    if True:
-    #     # read the current frame
-    #     ret, frame = cap.read()
-    #     if not ret:
-    #         print("Unable to capture video")
-    #         return
+    while True:
+        # read the current frame
+        ret, frame = cap.read()
+        if not ret:
+            print("Unable to capture video")
+            return
         # find and draw the keypoints of the frame
         kp_frame, des_frame = orb.detectAndCompute(frame, None)
         # match frame descriptors with model descriptors
@@ -83,49 +83,32 @@ def main():
         # compute Homography
         other_homography, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
 
+        if homography is not None and other_homography is not None and good:
         # Draw a rectangle and get centroid that marks the found models in the frame
-        h, w = model.shape
-        pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
-        dst = cv2.perspectiveTransform(pts, homography)
-        # centroid = np.asarray([(w-1)/2.0, (h-1)/2.0]).reshape(-1,1,2)
-        # centroid1 = cv2.perspectiveTransform(centroid, homography)
-        frame = cv2.polylines(frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
-        h, w = other_model.shape
-        pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
-        dst = cv2.perspectiveTransform(pts, other_homography)
-        # centroid = np.asarray([(w-1)/2.0, (h-1)/2.0]).reshape(-1,1,2)
-        # centroid2 = cv2.perspectiveTransform(centroid, other_homography)
-        frame = cv2.polylines(frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
+	        h, w = model.shape
+	        pts = np.float32([[(w-1)/2, 0], [(w-1)/2, h - 1]]).reshape(-1, 1, 2)
+	        dst = cv2.perspectiveTransform(pts, homography)							## first marker 2 points to define a ling
+	        frame = cv2.polylines(frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
+	        h, w = other_model.shape
+	        pts = np.float32([[(w-1)/2, 0], [(w-1)/2, h - 1]]).reshape(-1, 1, 2)
+	        dst = cv2.perspectiveTransform(pts, other_homography)					## second marker 2 points to define a ling
+	        frame = cv2.polylines(frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
+	    ########### ADD CODE FOR DISPLAYING BALL AND LOGIC OF GAME
+        #     # obtain 3D projection matrix from homography matrix and camera parameters
+        #     projection = projection_matrix(camera_parameters, homography)
+        #     other_projection = projection_matrix(camera_parameters, other_homography)
+        #     # project cube or model
+        #     render(frame, obj,projection, other_projection, model, other_model, False)
 
-        # project corners into frame
-        # dst = cv2.perspectiveTransform(centroid, homography)
-        # if good:
-        #     print(centroid1, centroid2)
-        # connect them with lines
-        # if args.rectangle:
-        #     frame = cv2.polylines(frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
-        # if a valid homography matrix was found render cube on model plane
-        if homography is not None and good:
-            # try:
-            # print(homography)
-            # obtain 3D projection matrix from homography matrix and camera parameters
-            projection = projection_matrix(camera_parameters, homography)
-            other_projection = projection_matrix(camera_parameters, other_homography)
-            # project cube or model
-            render(frame, obj,projection, other_projection, model, other_model, False)
-            # except:
-            #     pass
-        # frame = render(frame, obj,projection, other_projection, model, other_model, 100, False)
-        # cv2.imwrite('ans.jpg',frame)
         # draw first 10 matches.
         if args.matches and good:
             frame = cv2.drawMatches(model, kp_model, frame, kp_frame, matches[:10], 0, flags=2)
         # show result
-        # cv2.imshow('frame', frame)
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     break
+        cv2.imshow('frame', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-    # cap.release()
+    cap.release()
     cv2.destroyAllWindows()
     return 0
 
@@ -178,15 +161,12 @@ def render(img, obj, projection, other_projection, model, other_model, counter, 
 
     vec_base = centroid2 - centroid1
     vec_base = vec_base / (vec_base**2).sum()**0.5
-
+    
     counter = 0;
-    origframe = copy.deepcopy(img)
-    prev_dist = 9999999
-    frame_height = img.shape[0]
-    frame_width = img.shape[1]
-    out = cv2.VideoWriter('vid.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 5, (frame_width,frame_height))
+    origframe = copy.deepcopy(img) 
+    prev_dist = 9999999             
     while True:
-        print(counter)
+        #print(counter)
         img = copy.deepcopy(origframe)
         vec = vec_base*counter
         all_points_x = []
@@ -225,10 +205,6 @@ def render(img, obj, projection, other_projection, model, other_model, counter, 
             counter += 1
         prev_dist = dist
         cv2.imwrite('out/ans'+str(counter)+'.jpg',img)
-        out.write(img)
-        print("frame written")
-	out.release()
-    print("Done")
 
 
 def projection_matrix(camera_parameters, homography):
