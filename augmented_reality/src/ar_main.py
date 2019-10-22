@@ -25,6 +25,7 @@ def main():
     This functions loads the target surface image,
     """
     homography = None
+    final_homography = None
     # matrix of camera parameters (made up but works quite well for me)
     # camera_parameters = np.array([[435.90240479, 0., 276.97807681], [  0.,   532.43017578, 253.91024449], [0, 0, 1]])
     camera_parameters = np.array([[545.72564697, 0., 455.34108576], [0., 465.43661499, 236.53782366], [ 0., 0., 1. ]])
@@ -32,7 +33,9 @@ def main():
     orb = cv2.ORB_create()
     # create BFMatcher object based on hamming distance
     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-    final_homography = None
+    index_params = dict(algorithm=0, trees=5)
+    search_params = dict()
+    flann = cv2.FlannBasedMatcher(index_params, search_params)
     # load the reference surface that will be searched in the video stream
     dir_name = os.getcwd()
     model = cv2.imread(os.path.join(dir_name, 'reference/marker_shourya0.jpg'), 0)
@@ -42,6 +45,7 @@ def main():
     obj = OBJ(os.path.join(dir_name, 'models/fox.obj'), swapyz=True)
     # init video capture
     cap = cv2.VideoCapture(0)
+    # cap = cv2.VideoCapture('http://192.168.43.1:8080/video')
     # h = np.eye(3)
     while True:
         # read the current frame
@@ -52,6 +56,14 @@ def main():
         # find and draw the keypoints of the frame
         kp_frame, des_frame = orb.detectAndCompute(frame, None)
         # match frame descriptors with model descriptors
+
+        # matches = flann.knnMatch(np.float32(des_model), np.float32(des_frame), k=2)
+        # good_points = []
+        # for m, n in matches:
+        #     #if m.distance < 0.6 * n.distance:
+        #     good_points.append(m)
+        # matches = good_points
+
         matches = bf.match(des_model, des_frame)
         # sort them in the order of their distance
         # the lower the distance, the better the match
@@ -80,7 +92,7 @@ def main():
                 # connect them with lines
                 frame = cv2.polylines(frame, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
             # if a valid homography matrix was found render cube on model plane
-            if homography is not None and good:
+            if homography is not None:
                 try:
                     if final_homography is None:
                         final_homography = homography
